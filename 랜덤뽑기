@@ -1,0 +1,64 @@
+# bad<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>랜덤 뽑기 게임</title>
+<style>
+    body {
+        text-align: center;
+        font-family: Arial, sans-serif;
+        background: #f0f0f0;
+        padding-top: 100px;
+    }
+
+    h1 {
+        color: #333;
+    }
+
+    button {
+        padding: 15px 30px;
+        font-size: 20px;
+        cursor: pointer;
+        border: none;
+        border-radius: 10px;
+        background: #4CAF50;
+        color: white;
+    }
+
+    button:hover {
+        background: #45a049;
+    }
+
+    #result {
+        margin-top: 30px;
+        font-size: 30px;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<h1>🎲 랜덤 뽑기 게임</h1>
+<button onclick="draw()">뽑기!</button>
+
+<div id="result">버튼을 눌러 뽑기를 시작하세요.</div>
+
+<script>
+function draw() {
+    const items = [
+        "🥇 전설",
+        "🥈 희귀",
+        "🥉 일반",
+        "💀 꽝"
+    ];
+
+    const randomIndex = Math.floor(Math.random() * items.length);
+
+    document.getElementById("result").innerHTML =
+        "결과 : " + items[randomIndex];
+}
+</script>
+
+</body>
+</html>
