@@ -1,0 +1,904 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주간 출석체크</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f5ff;
+  color: #202944;
+  margin: 0;
+  padding: 16px;
+}
+.container { max-width: 600px; margin: auto; }
+.card {
+  background: white;
+  padding: 18px;
+  margin-bottom: 15px;
+  border-radius: 17px;
+  box-shadow: 0 4px 15px #00000008;
+}
+h1, h2, h3 { text-align: center; }
+h1 { font-size: 25px; }
+h2 { font-size: 20px; }
+button, input, select {
+  font: inherit;
+  border-radius: 10px;
+  padding: 11px;
+}
+button {
+  border: 0;
+  background: #4f6df5;
+  color: white;
+  cursor: pointer;
+}
+button:active { opacity: .8; }
+input, select {
+  border: 1px solid #d8ddeb;
+  width: 100%;
+  min-width: 0;
+  background: white;
+  color: #202944;
+}
+button:disabled { opacity: .5; }
+.primary { background: #4f6df5; }
+.danger { background: #e75a67; }
+.gray { background: #78839d; }
+.green { background: #168454; }
+.smallbtn { padding: 8px 10px; font-size: 13px; }
+.hidden { display: none !important; }
+.muted { color: #7a8499; font-size: 13px; }
+.center { text-align: center; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.row > input, .row > select { flex: 1; }
+.row > button { flex-shrink: 0; }
+.person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf0f6;
+}
+.person:last-child { border-bottom: 0; }
+.person-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.person-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #e7f8ef;
+  color: #168454;
+}
+.badge.off { background: #fff0f0; color: #d54e5b; }
+#display {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 7px;
+  padding: 16px;
+  background: #f4f6ff;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.keypad button {
+  font-size: 21px;
+  padding: 15px;
+  background: #e9edff;
+  color: #26365f;
+}
+#submit { width: 100%; margin-top: 12px; }
+.message { text-align: center; min-height: 20px; overflow-wrap: anywhere; }
+.nav {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 15px;
+}
+.nav button { background: #e9edff; color: #26365f; }
+.nav button.active { background: #4f6df5; color: white; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.stat {
+  background: #f4f6ff;
+  padding: 13px 5px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.stat strong { display: block; font-size: 23px; margin-bottom: 5px; }
+.stat span { font-size: 12px; color: #737f99; }
+hr { border: 0; border-top: 1px solid #edf0f6; margin: 18px 0; }
+label { display: block; font-size: 13px; margin: 10px 0 5px; }
+@media(max-width:380px) {
+  body { padding: 9px; }
+  .card { padding: 13px; }
+  .person { align-items: flex-start; }
+  .person-actions button { padding: 8px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 출석 화면 -->
+  <section id="home">
+    <h1>🔐 주간 출석체크</h1>
+    <p id="week" class="center muted"></p>
+
+    <div class="card">
+      <h2>🔢 번호 입력</h2>
+      <p class="center muted">개인 4자리 번호를 입력하세요.</p>
+      <div id="display">○ ○ ○ ○</div>
+
+      <div class="keypad">
+        <button onclick="press('1')">1</button>
+        <button onclick="press('2')">2</button>
+        <button onclick="press('3')">3</button>
+        <button onclick="press('4')">4</button>
+        <button onclick="press('5')">5</button>
+        <button onclick="press('6')">6</button>
+        <button onclick="press('7')">7</button>
+        <button onclick="press('8')">8</button>
+        <button onclick="press('9')">9</button>
+        <button onclick="clearPin()">지우기</button>
+        <button onclick="press('0')">0</button>
+        <button onclick="backspace()">⌫</button>
+      </div>
+
+      <button id="submit" onclick="checkIn()">출석하기</button>
+      <p id="message" class="message"></p>
+    </div>
+
+    <div class="card">
+      <h2>📊 이번 주 출석 현황</h2>
+      <div id="homeStats" class="stats"></div>
+      <div id="homeHistory"></div>
+    </div>
+
+    <div class="center">
+      <button onclick="showAdminLogin()">⚙️ 관리자 화면</button>
+    </div>
+  </section>
+
+  <!-- 관리자 로그인 -->
+  <section id="login" class="hidden">
+    <div class="card">
+      <h2>🔐 관리자 로그인</h2>
+      <p class="muted center">관리자 비밀번호를 입력하세요.</p>
+      <form id="loginForm">
+        <label for="adminPassword">관리자 비밀번호</label>
+        <input id="adminPassword" type="password"
+          autocomplete="current-password" required>
+        <button class="primary" style="width:100%;margin-top:12px">
+          로그인
+        </button>
+      </form>
+      <p id="loginMessage" class="message"></p>
+      <button class="gray" style="width:100%" onclick="goHome()">
+        출석 화면으로 돌아가기
+      </button>
+    </div>
+  </section>
+
+  <!-- 관리자 대시보드 -->
+  <section id="admin" class="hidden">
+    <h1>🛠️ 관리자 센터</h1>
+    <p class="center muted">회원과 출석 기록을 관리하세요.</p>
+
+    <div class="nav">
+      <button class="active" data-tab="dashboard"
+        onclick="openTab('dashboard')">📊 대시보드</button>
+      <button data-tab="members"
+        onclick="openTab('members')">👥 회원 관리</button>
+      <button data-tab="attendance"
+        onclick="openTab('attendance')">✏️ 출석 관리</button>
+      <button data-tab="records"
+        onclick="openTab('records')">📅 기록 조회</button>
+      <button data-tab="backup"
+        onclick="openTab('backup')">💾 백업·복원</button>
+      <button data-tab="settings"
+        onclick="openTab('settings')">⚙️ 설정</button>
+    </div>
+
+    <!-- 대시보드 -->
+    <div id="tab-dashboard" class="tab">
+      <div class="card">
+        <h2>📊 이번 주 요약</h2>
+        <p id="adminWeek" class="center muted"></p>
+        <div id="adminStats" class="stats"></div>
+        <hr>
+        <h3>이번 주 출석 현황</h3>
+        <div id="dashboardList"></div>
+      </div>
+      <div class="card">
+        <h3>⚡ 빠른 작업</h3>
+        <div class="row">
+          <button onclick="openTab('members')">회원 관리</button>
+          <button onclick="openTab('attendance')">출석 수정</button>
+          <button onclick="openTab('backup')">데이터 백업</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 회원 관리 -->
+    <div id="tab-members" class="tab hidden">
+      <div class="card">
+        <h2>👥 회원 추가</h2>
+        <form id="addForm" class="row">
+          <input id="newName" placeholder="이름 입력" required maxlength="40">
+          <button>회원 추가</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>회원 목록</h2>
+        <p class="muted">개인 번호는 서로 달라야 합니다.</p>
+        <div id="memberList"></div>
+      </div>
+    </div>
+
+    <!-- 출석 관리 -->
+    <div id="tab-attendance" class="tab hidden">
+      <div class="card">
+        <h2>✏️ 출석 직접 수정</h2>
+        <p class="muted">이번 주 출석을 등록하거나 취소할 수 있어요.</p>
+        <div id="attendanceList"></div>
+      </div>
+    </div>
+
+    <!-- 기록 조회 -->
+    <div id="tab-records" class="tab hidden">
+      <div class="card">
+        <h2>📅 주간 기록 조회</h2>
+        <label for="recordWeek">조회할 주 선택</label>
+        <select id="recordWeek" onchange="renderRecords()"></select>
+        <div id="recordSummary" style="margin-top:15px"></div>
+        <div id="recordList"></div>
+        <hr>
+        <button class="gray" style="width:100%" onclick="exportWeek()">
+          이 주 기록 CSV 저장
+        </button>
+      </div>
+    </div>
+
+    <!-- 백업 -->
+    <div id="tab-backup" class="tab hidden">
+      <div class="card">
+        <h2>💾 데이터 백업</h2>
+        <p>회원 목록, 개인 번호, 출석 기록을 JSON 파일로 저장해요.</p>
+        <button style="width:100%" onclick="exportBackup()">
+          전체 데이터 백업 다운로드
+        </button>
+        <hr>
+        <h3>백업 파일 복원</h3>
+        <p class="muted">복원하면 현재 데이터가 백업 데이터로 교체됩니다.</p>
+        <input id="backupFile" type="file" accept=".json,application/json">
+        <button class="danger" style="width:100%;margin-top:10px"
+          onclick="importBackup()">백업 복원하기</button>
+        <p id="backupMessage" class="message"></p>
+      </div>
+    </div>
+
+    <!-- 설정 -->
+    <div id="tab-settings" class="tab hidden">
+      <div class="card">
+        <h2>⚙️ 관리자 설정</h2>
+        <h3>비밀번호 변경</h3>
+        <form id="passwordForm">
+          <label for="oldPassword">현재 비밀번호</label>
+          <input id="oldPassword" type="password" required>
+          <label for="newPassword">새 비밀번호 (4~30자)</label>
+          <input id="newPassword" type="password"
+            minlength="4" maxlength="30" required>
+          <label for="confirmPassword">새 비밀번호 확인</label>
+          <input id="confirmPassword" type="password"
+            minlength="4" maxlength="30" required>
+          <button style="width:100%;margin-top:12px">비밀번호 변경</button>
+        </form>
+        <p id="settingsMessage" class="message"></p>
+        <hr>
+        <h3>출석 데이터 초기화</h3>
+        <p class="muted">전체 출석 기록만 삭제합니다. 회원은 유지됩니다.</p>
+        <button class="danger" style="width:100%" onclick="clearAllRecords()">
+          모든 출석 기록 삭제
+        </button>
+        <hr>
+        <button class="gray" style="width:100%" onclick="logout()">
+          관리자 로그아웃
+        </button>
+      </div>
+    </div>
+
+    <div class="center" style="margin-bottom:25px">
+      <button class="gray" onclick="goHome()">출석 화면으로 이동</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA_KEY = "weeklyAttendanceExample";
+const ADMIN_KEY = "weeklyAttendanceAdminPassword";
+
+let pin = "";
+let adminLoggedIn = false;
+let adminPassword = localStorage.getItem(ADMIN_KEY) || "1234";
+let data = loadData();
+
+function loadData() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DATA_KEY));
+    if (saved && Array.isArray(saved.people) && saved.records &&
+        typeof saved.records === "object") {
+      return saved;
+    }
+  } catch (e) {}
+  return {people: [], records: {}};
+}
+
+function save() {
+  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+}
+
+function dateKey(d = new Date()) {
+  return d.getFullYear() + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    String(d.getDate()).padStart(2,"0");
+}
+
+function weekKey(d = new Date()) {
+  d = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  d.setDate(d.getDate() - (d.getDay()+6)%7);
+  return dateKey(d);
+}
+
+function weekLabel(key) {
+  const d = new Date(key + "T12:00:00");
+  const end = new Date(d);
+  end.setDate(end.getDate()+6);
+  return key + " ~ " + dateKey(end);
+}
+
+function currentRecord() {
+  const w = weekKey();
+  if (!data.records[w]) data.records[w] = {};
+  return data.records[w];
+}
+
+function setMessage(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+function press(n) {
+  if (pin.length < 4) pin += n;
+  updateDisplay();
+  if (pin.length === 4) {
+    // 4자리 입력 후 자동으로 출석 확인
+    checkIn();
+  }
+}
+
+function clearPin() {
+  pin = "";
+  updateDisplay();
+}
+
+function backspace() {
+  pin = pin.slice(0,-1);
+  updateDisplay();
+}
+
+function updateDisplay() {
+  document.getElementById("display").textContent =
+    pin.length ? "● ".repeat(pin.length) + "○ ".repeat(4-pin.length)
+               : "○ ○ ○ ○";
+}
+
+function checkIn() {
+  const msg = document.getElementById("message");
+  if (pin.length !== 4) {
+    msg.textContent = "4자리 번호를 입력하세요.";
+    return;
+  }
+
+  const person = data.people.find(p => p.pin === pin);
+  if (!person) {
+    msg.textContent = "❌ 등록되지 않은 번호입니다.";
+    clearPin();
+    return;
+  }
+
+  const record = currentRecord();
+  if (record[person.id]) {
+    msg.textContent = "이미 이번 주에 출석했습니다!";
+    clearPin();
+    return;
+  }
+
+  record[person.id] = {
+    time: new Date().toLocaleTimeString("ko-KR", {
+      hour: "2-digit", minute: "2-digit"
+    })
+  };
+
+  save();
+  msg.textContent = "✅ " + person.name + " 출석 완료!";
+  clearPin();
+  renderAll();
+}
+
+function showAdminLogin() {
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("admin").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("adminPassword").value = "";
+  setMessage("loginMessage", "");
+}
+
+document.getElementById("loginForm").onsubmit = function(e) {
+  e.preventDefault();
+  const entered = document.getElementById("adminPassword").value;
+  if (entered !== adminPassword) {
+    setMessage("loginMessage", "비밀번호가 올바르지 않습니다.");
+    return;
+  }
+  adminLoggedIn = true;
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("admin").classList.remove("hidden");
+  openTab("dashboard");
+  renderAll();
+};
+
+function goHome() {
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("admin").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+  clearPin();
+  renderAll();
+}
+
+function logout() {
+  adminLoggedIn = false;
+  goHome();
+}
+
+function openTab(name) {
+  if (!adminLoggedIn) {
+    showAdminLogin();
+    return;
+  }
+  document.querySelectorAll(".tab").forEach(el =>
+    el.classList.add("hidden"));
+  document.getElementById("tab-" + name).classList.remove("hidden");
+  document.querySelectorAll(".nav button").forEach(b =>
+    b.classList.toggle("active", b.dataset.tab === name));
+
+  if (name === "records") populateWeekSelect();
+  renderAll();
+}
+
+function addPerson(name) {
+  name = name.trim();
+  if (!name) return false;
+  data.people.push({
+    id: Date.now().toString() + Math.random().toString(36).slice(2),
+    name,
+    pin: null
+  });
+  save();
+  return true;
+}
+
+document.getElementById("addForm").onsubmit = function(e) {
+  e.preventDefault();
+  if (addPerson(document.getElementById("newName").value)) {
+    this.reset();
+    renderAll();
+  }
+};
+
+function setPin(person) {
+  const value = prompt(person.name + "님의 새 4자리 번호를 입력하세요.");
+  if (value === null) return;
+  if (!/^[0-9]{4}$/.test(value)) {
+    alert("숫자 4자리를 입력하세요. 예: 0123");
+    return;
+  }
+  if (data.people.some(p => p.id !== person.id && p.pin === value)) {
+    alert("이미 사용 중인 번호입니다.");
+    return;
+  }
+  person.pin = value;
+  save();
+  renderAll();
+}
+
+function renamePerson(person) {
+  const value = prompt("새 이름을 입력하세요.", person.name);
+  if (value === null) return;
+  const name = value.trim();
+  if (!name) {
+    alert("이름을 입력하세요.");
+    return;
+  }
+  person.name = name;
+  save();
+  renderAll();
+}
+
+function removePerson(person) {
+  if (!confirm(person.name + "님을 삭제할까요? 관련 출석 기록도 삭제됩니다.")) return;
+  data.people = data.people.filter(p => p.id !== person.id);
+  Object.values(data.records).forEach(r => delete r[person.id]);
+  save();
+  renderAll();
+}
+
+function toggleAttendance(person, week = weekKey()) {
+  if (!data.records[week]) data.records[week] = {};
+  const record = data.records[week];
+
+  if (record[person.id]) {
+    if (!confirm(person.name + "님의 출석을 취소할까요?")) return;
+    delete record[person.id];
+  } else {
+    record[person.id] = {
+      time: new Date().toLocaleTimeString("ko-KR", {
+        hour: "2-digit", minute: "2-digit"
+      }) + " (관리자)"
+    };
+  }
+  save();
+  renderAll();
+}
+
+function makeRow(person, statusText, buttons = []) {
+  const row = document.createElement("div");
+  row.className = "person";
+
+  const info = document.createElement("div");
+  info.className = "person-info";
+  const name = document.createElement("strong");
+  name.textContent = person.name;
+  const sub = document.createElement("div");
+  sub.className = "muted";
+  sub.textContent = statusText;
+  info.append(name, sub);
+
+  const actions = document.createElement("div");
+  actions.className = "person-actions";
+  buttons.forEach(item => {
+    const b = document.createElement("button");
+    b.className = "smallbtn " + (item.className || "");
+    b.textContent = item.label;
+    b.onclick = item.action;
+    actions.append(b);
+  });
+
+  row.append(info, actions);
+  return row;
+}
+
+function makeStatusRow(person, record) {
+  const checked = !!record[person.id];
+  const status = checked
+    ? "출석 " + (record[person.id].time || "")
+    : "미출석";
+  const badge = checked ? "badge" : "badge off";
+  const row = makeRow(person, status);
+  const tag = document.createElement("span");
+  tag.className = badge;
+  tag.textContent = checked ? "출석 완료" : "미출석";
+  row.append(tag);
+  return row;
+}
+
+function renderMembers() {
+  const list = document.getElementById("memberList");
+  list.replaceChildren();
+
+  if (!data.people.length) {
+    list.textContent = "등록된 회원이 없습니다.";
+    return;
+  }
+
+  data.people.forEach(p => {
+    const pinText = p.pin ? "개인 번호 설정 완료" : "개인 번호 미설정";
+    list.append(makeRow(p, pinText, [
+      {label: p.pin ? "번호 변경" : "번호 설정", action: () => setPin(p)},
+      {label: "이름 변경", action: () => renamePerson(p), className: "gray"},
+      {label: "삭제", action: () => removePerson(p), className: "danger"}
+    ]));
+  });
+}
+
+function renderAttendanceAdmin() {
+  const list = document.getElementById("attendanceList");
+  list.replaceChildren();
+  const record = currentRecord();
+
+  if (!data.people.length) {
+    list.textContent = "회원부터 추가해 주세요.";
+    return;
+  }
+
+  data.people.forEach(p => {
+    const checked = !!record[p.id];
+    list.append(makeRow(p, checked
+      ? "현재 출석: " + (record[p.id].time || "시간 기록 없음")
+      : "현재 미출석", [
+      {
+        label: checked ? "출석 취소" : "출석 등록",
+        className: checked ? "danger" : "green",
+        action: () => toggleAttendance(p)
+      }
+    ]));
+  });
+}
+
+function renderDashboard() {
+  const record = currentRecord();
+  const count = data.people.filter(p => record[p.id]).length;
+  const total = data.people.length;
+  const rate = total ? Math.round(count / total * 100) : 0;
+  const noPin = data.people.filter(p => !p.pin).length;
+
+  document.getElementById("adminWeek").textContent =
+    "이번 주: " + weekLabel(weekKey());
+
+  document.getElementById("adminStats").innerHTML = "";
+  [
+    ["출석", count + "명"],
+    ["전체 회원", total + "명"],
+    ["출석률", rate + "%"]
+  ].forEach(([label, value]) => {
+    const box = document.createElement("div");
+    box.className = "stat";
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    const span = document.createElement("span");
+    span.textContent = label;
+    box.append(strong, span);
+    document.getElementById("adminStats").append(box);
+  });
+
+  const list = document.getElementById("dashboardList");
+  list.replaceChildren();
+  data.people.forEach(p => list.append(makeStatusRow(p, record)));
+
+  if (noPin) {
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.textContent = "개인 번호가 설정되지 않은 회원: " + noPin + "명";
+    list.append(note);
+  }
+}
+
+function renderHome() {
+  document.getElementById("week").textContent =
+    "이번 주: " + weekLabel(weekKey());
+  const record = currentRecord();
+  const count = data.people.filter(p => record[p.id]).length;
+  const total = data.people.length;
+  const rate = total ? Math.round(count / total * 100) : 0;
+
+  const stats = document.getElementById("homeStats");
+  stats.replaceChildren();
+  [
+    ["출석", count + "명"],
+    ["전체", total + "명"],
+    ["출석률", rate + "%"]
+  ].forEach(([label, value]) => {
+    const box = document.createElement("div");
+    box.className = "stat";
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    const span = document.createElement("span");
+    span.textContent = label;
+    box.append(strong, span);
+    stats.append(box);
+  });
+
+  const list = document.getElementById("homeHistory");
+  list.replaceChildren();
+  data.people.forEach(p => list.append(makeStatusRow(p, record)));
+  if (!data.people.length) {
+    list.textContent = "관리자 화면에서 회원을 추가해 주세요.";
+  }
+}
+
+function populateWeekSelect() {
+  const select = document.getElementById("recordWeek");
+  const previous = select.value;
+  const keys = new Set(Object.keys(data.records));
+  keys.add(weekKey());
+  const sorted = [...keys].sort((a,b) => b.localeCompare(a));
+  select.replaceChildren();
+
+  sorted.forEach(key => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = weekLabel(key) + (key === weekKey() ? " (이번 주)" : "");
+    select.append(option);
+  });
+
+  if (sorted.includes(previous)) select.value = previous;
+}
+
+function renderRecords() {
+  const select = document.getElementById("recordWeek");
+  if (!select.options.length) return;
+  const key = select.value;
+  const record = data.records[key] || {};
+  const count = data.people.filter(p => record[p.id]).length;
+  const total = data.people.length;
+  document.getElementById("recordSummary").textContent =
+    weekLabel(key) + " · 출석 " + count + "/" + total + "명 · " +
+    (total ? Math.round(count/total*100) : 0) + "%";
+
+  const list = document.getElementById("recordList");
+  list.replaceChildren();
+  data.people.forEach(p => list.append(makeStatusRow(p, record)));
+}
+
+function csvEscape(value) {
+  return '"' + String(value ?? "").replace(/"/g, '""') + '"';
+}
+
+function downloadText(filename, content, type) {
+  const blob = new Blob(["\uFEFF", content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportWeek() {
+  const key = document.getElementById("recordWeek").value || weekKey();
+  const record = data.records[key] || {};
+  const rows = [["이름", "출석 여부", "시간"]];
+  data.people.forEach(p => {
+    rows.push([
+      p.name,
+      record[p.id] ? "출석" : "미출석",
+      record[p.id] ? (record[p.id].time || "") : ""
+    ]);
+  });
+  const csv = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+  downloadText("출석기록_" + key + ".csv", csv, "text/csv;charset=utf-8");
+}
+
+function exportBackup() {
+  const backup = {
+    format: "weeklyAttendanceBackup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data
+  };
+  downloadText("출석체크_백업_" + dateKey() + ".json",
+    JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
+}
+
+function importBackup() {
+  const file = document.getElementById("backupFile").files[0];
+  if (!file) {
+    setMessage("backupMessage", "먼저 백업 JSON 파일을 선택하세요.");
+    return;
+  }
+  if (!confirm("현재 회원과 출석 데이터가 백업 파일 내용으로 교체됩니다. 계속할까요?")) return;
+
+  const reader = new FileReader();
+  reader.onload = function() {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const candidate = parsed.data || parsed;
+      if (!candidate || !Array.isArray(candidate.people) ||
+          !candidate.records || typeof candidate.records !== "object") {
+        throw new Error("올바른 출석 백업 파일이 아닙니다.");
+      }
+      const ids = new Set();
+      const pins = new Set();
+
+      for (const p of candidate.people) {
+        if (!p || typeof p.id !== "string" ||
+            typeof p.name !== "string" || ids.has(p.id)) {
+          throw new Error("회원 데이터 형식이 올바르지 않습니다.");
+        }
+        ids.add(p.id);
+        if (p.pin !== null && p.pin !== undefined) {
+          if (!/^[0-9]{4}$/.test(p.pin) || pins.has(p.pin)) {
+            throw new Error("개인 번호가 잘못되었거나 중복됩니다.");
+          }
+          pins.add(p.pin);
+        }
+      }
+
+      data = {
+        people: candidate.people,
+        records: candidate.records
+      };
+      save();
+      setMessage("backupMessage", "복원이 완료되었습니다.");
+      renderAll();
+    } catch (err) {
+      setMessage("backupMessage", "복원 실패: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("passwordForm").onsubmit = function(e) {
+  e.preventDefault();
+  const oldPass = document.getElementById("oldPassword").value;
+  const newPass = document.getElementById("newPassword").value;
+  const confirmPass = document.getElementById("confirmPassword").value;
+
+  if (oldPass !== adminPassword) {
+    setMessage("settingsMessage", "현재 비밀번호가 틀렸습니다.");
+    return;
+  }
+  if (newPass.length < 4 || newPass.length > 30) {
+    setMessage("settingsMessage", "새 비밀번호는 4~30자로 입력하세요.");
+    return;
+  }
+  if (newPass !== confirmPass) {
+    setMessage("settingsMessage", "새 비밀번호가 서로 다릅니다.");
+    return;
+  }
+
+  adminPassword = newPass;
+  localStorage.setItem(ADMIN_KEY, adminPassword);
+  this.reset();
+  setMessage("settingsMessage", "비밀번호를 변경했습니다.");
+};
+
+function clearAllRecords() {
+  if (!confirm("모든 주간 출석 기록을 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) return;
+  data.records = {};
+  save();
+  renderAll();
+  alert("모든 출석 기록을 삭제했습니다.");
+}
+
+function renderAll() {
+  renderHome();
+  renderDashboard();
+  renderMembers();
+  renderAttendanceAdmin();
+  if (document.getElementById("tab-records") &&
+      !document.getElementById("tab-records").classList.contains("hidden")) {
+    populateWeekSelect();
+    renderRecords();
+  }
+}
+
+renderAll();
+</script>
+</body>
+</html>
+
